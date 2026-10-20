@@ -1,0 +1,12 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { hasSession, openAI, unauthorized } from '../_lib';
+export const maxDuration = 60;
+const system = `Anda adalah asisten yang merapikan daftar terapi obat rumah sakit. Tugas: ubah data resep mentah menjadi daftar terapi yang rapi.\n\nATURAN PEMBERSIHAN:\n- Hapus tanggal dan jam. Hapus kode transaksi. Hapus "r/". Hapus jumlah pengambilan obat seperti no 1, no 2, no 3, no x, no X, jumlah vial, jumlah ampul, jumlah botol. Hapus kata signa. Jangan tampilkan informasi stok/administrasi.\n\nATURAN FORMAT:\n- Semua terapi (kecuali racikan pulv) diawali tanda "-". Satu terapi satu baris. Jangan beri komentar. Jangan tambahkan obat baru. Jangan ubah nama obat. Jangan ubah dosis total. Jangan ubah frekuensi. Singkatan tetap boleh digunakan.\n\nATURAN DOSIS:\nJika pola nama obat + kekuatan obat + signa jumlah pemberian, gabungkan dosis dengan frekuensi, contoh Analsik 500mg tab s 2 dd 1 menjadi - Analsik 2x500mg tab; Paracetamol 500mg tab signa 3x1 menjadi - Paracetamol 3x500mg tab. Jika dosis signa spesifik, contoh Paracetamol 1000mg/100ml inf signa 500mg/8jam menjadi - Inf. Paracetamol 500mg/8jam.\n\nATURAN RUTE: Obat infus awali Inf. Obat injeksi awali Inj. Syrup tulis syr. Tablet tulis tab.\n\nATURAN RACIKAN PULV: Jika beberapa baris obat satu racikan puyer (pulv, mf pulv, dtd, atau puyer menandai kelompok), gabungkan menjadi satu baris: Pulv (Obat1 dosis, Obat2 dosis, Obat3 dosis) frekuensi pulv. Ambil frekuensi dari signa (s 3 dd 1 menjadi 3x1). Racikan tidak diawali tanda apa pun, mulai dengan Pulv. Hapus jumlah bungkus/no. Nama dan dosis tiap obat ditulis apa adanya, dipisah koma.\n\nURUTKAN berdasarkan cara pemberian: 1) Cairan infus dasar RL/NaCl/Dextrose 2) Obat Inf. 3) Obat Inj. 4) oral tablet/kapsul 5) racikan pulv 6) syrup 7) lainnya.\n\nKembalikan hanya daftar terapi hasil, tanpa komentar atau pengantar.`;
+export async function POST(req: NextRequest) {
+  if (!hasSession(req)) return unauthorized();
+  const {text}=await req.json().catch(()=>({}));
+  if (typeof text!=='string'||!text.trim()) return NextResponse.json({error:'Teks resep tidak boleh kosong.'},{status:400});
+  if (text.length>20000) return NextResponse.json({error:'Resep terlalu panjang (maksimum 20.000 karakter).'}, {status:413});
+  try { const result=await openAI(system,text); return NextResponse.json({result:result.trim()}); }
+  catch(e) { return NextResponse.json({error:e instanceof Error?e.message:'Terjadi kesalahan saat menghubungi OpenAI.'},{status:502}); }
+}
