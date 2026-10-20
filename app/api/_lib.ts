@@ -4,17 +4,23 @@ import { NextRequest, NextResponse } from 'next/server';
 const cookieName = 'nine_session';
 function secret() { return process.env.SESSION_SECRET || process.env.APP_PASSCODE || '9909-local-session-secret-change-before-deploy'; }
 function signature(payload: string) { return createHmac('sha256', secret()).update(payload).digest('base64url'); }
-export function hasSession(req: NextRequest) {
+export function sessionExpiry(req: NextRequest): number | null {
   const token = req.cookies.get(cookieName)?.value || '';
-  const [payload, sig] = token.split('.'); if (!payload || !sig) return false;
+  const [payload, sig] = token.split('.'); if (!payload || !sig) return null;
   const expected = signature(payload);
   const a = Buffer.from(sig), b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a,b)) return false;
-  try { return JSON.parse(Buffer.from(payload,'base64url').toString()).exp > Date.now(); } catch { return false; }
+  if (a.length !== b.length || !timingSafeEqual(a,b)) return null;
+  try {
+    const exp = JSON.parse(Buffer.from(payload,'base64url').toString()).exp;
+    return typeof exp === 'number' && exp > Date.now() ? exp : null;
+  } catch { return null; }
 }
+export function hasSession(req: NextRequest) { return sessionExpiry(req) !== null; }
 export function setSession(res: NextResponse) {
-  const payload = Buffer.from(JSON.stringify({ exp: Date.now() + 12*60*60*1000 })).toString('base64url');
-  res.cookies.set(cookieName, `${payload}.${signature(payload)}`, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'strict', path:'/', maxAge:12*60*60 });
+  const expiresAt = Date.now() + 5*60*1000;
+  const payload = Buffer.from(JSON.stringify({ exp: expiresAt })).toString('base64url');
+  res.cookies.set(cookieName, `${payload}.${signature(payload)}`, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'strict', path:'/', maxAge:5*60 });
+  return expiresAt;
 }
 export function clearSession(res: NextResponse) { res.cookies.set(cookieName,'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:0}); }
 export function unauthorized() { return NextResponse.json({error:'Sesi berakhir. Masukkan passcode kembali.'},{status:401}); }
