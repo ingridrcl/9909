@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './styles.css';
 
 export const metadata: Metadata = {
-  title: '9909 — Resep & Informed Consent',
+  title: '9909',
   description: 'Rapikan resep dan siapkan draft informed consent.',
 };
 
