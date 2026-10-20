@@ -1,3 +1,3 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = { poweredByHeader: false, distDir: '.next-deploy' };
+const nextConfig = { poweredByHeader: false };
 export default nextConfig;
