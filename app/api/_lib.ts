@@ -29,7 +29,7 @@ export async function openAI(system: string, user: string, json = false) {
   if (!key) throw new Error('OPENAI_API_KEY belum diatur. Tambahkan API key di Environment Variables Vercel.');
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method:'POST', headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},
-    body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-4o-mini',messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.2,...(json?{response_format:{type:'json_object'}}:{})}),
+    body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-6.1-sol',messages:[{role:'system',content:system},{role:'user',content:user}],temperature:0.2,...(json?{response_format:{type:'json_object'}}:{})}),
   });
   const data = await response.json();
   if (!response.ok) { const detail=data?.error?.message; throw new Error(detail ? `OpenAI: ${detail}` : 'Permintaan ke OpenAI gagal. Periksa API key dan saldo akun API.'); }
