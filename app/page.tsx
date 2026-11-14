@@ -43,14 +43,29 @@ export default function Home() {
     }).catch(() => {}).finally(() => setChecking(false));
   }, []);
   useEffect(() => {
-    if (!authenticated || sessionExpiresAt === null) return;
+    if (!authenticated || sessionExpiresAt === null || tab === 'assessment') return;
     const timer = window.setTimeout(() => {
       setAuthenticated(false);
       setSessionExpiresAt(null);
       setLoginError('Sesi berakhir. Masukkan passcode kembali.');
     }, Math.max(0, sessionExpiresAt - Date.now()));
     return () => window.clearTimeout(timer);
-  }, [authenticated, sessionExpiresAt]);
+  }, [authenticated, sessionExpiresAt, tab]);
+  useEffect(() => {
+    if (!authenticated) return;
+    let active = true;
+    const renew = async () => {
+      try {
+        const response = await fetch('/api/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assessmentActive: tab === 'assessment' }) });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active) setSessionExpiresAt(data.expiresAt);
+      } catch { /* Keep the current session deadline if renewal is temporarily unavailable. */ }
+    };
+    void renew();
+    const interval = tab === 'assessment' ? window.setInterval(renew, 4 * 60 * 1000) : null;
+    return () => { active = false; if (interval !== null) window.clearInterval(interval); };
+  }, [authenticated, tab]);
   async function login(e: React.FormEvent) {
     e.preventDefault(); setLoginError('');
     try { const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passcode }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Passcode tidak cocok.'); setAuthenticated(true); setSessionExpiresAt(Date.now() + 5*60*1000); setPasscode(''); }

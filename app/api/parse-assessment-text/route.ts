@@ -5,8 +5,7 @@ export const maxDuration = 60;
 
 const patientFields = [
   'Nama Pasien', 'Usia', 'Keluhan Utama', 'Keluhan Tambahan', 'Riwayat Penyakit Sekarang',
-  'Riwayat Penyakit Dahulu', 'Riwayat Penyakit Keluarga', 'Riwayat Pekerjaan', 'Status Sosial',
-  'Status Ekonomi', 'Status Kejiwaan dan Kebiasaan', 'Kesadaran', 'Keadaan Umum', 'Tekanan Darah',
+  'Riwayat Penyakit Dahulu', 'Kesadaran', 'Tekanan Darah',
   'Nadi', 'Suhu', 'Pernapasan', 'Status Gizi', 'Nyeri (VAS)', 'Pemeriksaan Fisik Abnormal',
   'Laboratorium', 'Radiologi', 'Diagnosis Kerja', 'Diagnosis Banding', 'Terapi (Obat)', 'Planning',
 ] as const;
@@ -19,7 +18,7 @@ ATURAN EKSTRAKSI:
 - Satu objek untuk setiap pasien yang berbeda. Jika nama yang sama muncul berulang dengan informasi yang jelas merupakan duplikasi, gabungkan tanpa mengulang isi. Jangan gabungkan pasien berbeda.
 - Isi hanya fakta yang ada di teks. Jangan menyimpulkan diagnosis, obat, dosis, alergi, hasil pemeriksaan, atau nilai tanda vital. Pertahankan istilah medis, angka, dosis, frekuensi, dan satuan.
 - Informasi pasien yang tidak ada atau tidak diketahui isi "-". Untuk "Pemeriksaan Fisik Abnormal", kosongkan menjadi string kosong bila tidak ada kelainan; masukkan hanya temuan yang abnormal, beserta bagian tubuhnya. Jangan tulis bagian normal.
-- "Status Ekonomi" dan "Status Gizi" selalu "Sedang".
+- "Status Gizi" selalu "Sedang".
 - "Laboratorium" dan "Radiologi" selalu "Terlampir".
 - "Diagnosis Kerja" ambil diagnosis dari bagian A/ atau Assessment. Hilangkan awalan A/ bila ada. Jika tidak ada, gunakan "-". "Diagnosis Banding" selalu "-".
 - "Terapi (Obat)" ambil terapi DPJP/dokter ruangan bila tersedia (biasanya ditandai x atau berada di bawah bagian terapi DPJP). Jika terapi DPJP tidak tersedia, gunakan terapi IGD. Jangan gabungkan keduanya ketika terapi DPJP ada. Pisahkan obat dengan titik koma dan pertahankan dosis/frekuensi.
@@ -47,7 +46,6 @@ export async function POST(req: NextRequest) {
         if (row[key]) continue;
         row[key] = key === 'Pemeriksaan Fisik Abnormal' ? '' : '-';
       }
-      row['Status Ekonomi'] = 'Sedang';
       row['Status Gizi'] = 'Sedang';
       row.Laboratorium = 'Terlampir';
       row.Radiologi = 'Terlampir';

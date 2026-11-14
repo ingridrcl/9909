@@ -16,10 +16,10 @@ export function sessionExpiry(req: NextRequest): number | null {
   } catch { return null; }
 }
 export function hasSession(req: NextRequest) { return sessionExpiry(req) !== null; }
-export function setSession(res: NextResponse) {
-  const expiresAt = Date.now() + 5*60*1000;
+export function setSession(res: NextResponse, durationSeconds = 5 * 60) {
+  const expiresAt = Date.now() + durationSeconds * 1000;
   const payload = Buffer.from(JSON.stringify({ exp: expiresAt })).toString('base64url');
-  res.cookies.set(cookieName, `${payload}.${signature(payload)}`, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'strict', path:'/', maxAge:5*60 });
+  res.cookies.set(cookieName, `${payload}.${signature(payload)}`, { httpOnly:true, secure:process.env.NODE_ENV==='production', sameSite:'strict', path:'/', maxAge:durationSeconds });
   return expiresAt;
 }
 export function clearSession(res: NextResponse) { res.cookies.set(cookieName,'',{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',path:'/',maxAge:0}); }

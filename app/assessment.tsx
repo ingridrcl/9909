@@ -1,18 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
 
 type Patient = Record<string, string>;
 const anamnesis = [
   ['Keluhan Utama', 'Keluhan Utama'], ['Keluhan Tambahan', 'Keluhan Tambahan'],
   ['Riwayat Penyakit Sekarang', 'Riwayat Penyakit Sekarang'], ['Riwayat Penyakit Dahulu', 'Riwayat Penyakit Dahulu'],
-  ['Riwayat Penyakit Keluarga', 'Riwayat Penyakit Keluarga'], ['Riwayat Pekerjaan', 'Riwayat Pekerjaan'],
-  ['Status Sosial', 'Status Sosial'], ['Status Kejiwaan dan Kebiasaan', 'Status Kejiwaan dan Kebiasaan'],
 ];
-const physical = ['Kepala', 'Mata', 'THT', 'Mulut', 'Gigi', 'Leher', 'Jantung', 'Dada dan Payudara', 'Perut', 'Urogenital', 'Anggota Gerak', 'Status Neurologis', 'Muskuloskeletal'];
 const clinical = ['Laboratorium', 'Radiologi', 'Diagnosis Kerja', 'Diagnosis Banding', 'Terapi (Obat)', 'Planning'];
 const val = (p: Patient, key: string) => p[key]?.trim() || '—';
+const noUnit = (value: string) => value
+  .replace(/\s*(?:mm\s*hg|x\s*\/\s*menit|kali\s*\/\s*menit|\/\s*menit|bpm)\s*/gi, '')
+  .replace(/(?:[°º]\s*C\b|\bC(?:elsius)?\b|derajat\s*C(?:elsius)?\b)/gi, '').trim();
 
 export default function Assessment() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -59,12 +59,7 @@ export default function Assessment() {
     window.setTimeout(() => setNotice(''), 1800);
   }
   const displayName = patient ? `${val(patient, 'Nama Pasien')}${patient.Usia ? ` · ${patient.Usia}` : ''}` : '';
-  const examRows = useMemo(() => {
-    const rows = physical.map(part => ({ part, description: 'Dalam batas normal', normal: true }));
-    const abnormal = val(patient || {}, 'Pemeriksaan Fisik Abnormal');
-    if (abnormal !== '—') rows.push({ part: 'Temuan Abnormal', description: abnormal, normal: false });
-    return rows;
-  }, [patient]);
+  const abnormalFindings = patient?.['Pemeriksaan Fisik Abnormal']?.trim() || '';
 
   return <div className="content assessment-content">
     <div className="page-heading"><div><div className="eyebrow"><span>03</span> TOOLKIT / KLINIS</div><h1>Assessment Awal<span className="heading-period">.</span></h1><p>Unggah Excel, lalu salin isian per bagian dan per pasien.</p></div><div className="heading-stamp assessment-stamp"><small>ASSESS<br/>DESK</small></div></div>
@@ -74,14 +69,11 @@ export default function Assessment() {
     {!patient ? <div className="assessment-empty"><span>▤</span><h2>Belum ada data pasien</h2><p>Unggah workbook dengan satu baris judul kolom dan satu pasien pada setiap baris.</p></div> : <>
       <div className="patient-switcher"><button className="secondary" onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0}>← Sebelumnya</button><div className="patient-current"><small>PASIEN {index + 1} DARI {patients.length}</small><b>{displayName}</b></div><button className="secondary" onClick={() => setIndex(i => Math.min(patients.length - 1, i + 1))} disabled={index === patients.length - 1}>Berikutnya →</button></div>
       <section className="assessment-section"><div className="assessment-section-head"><div><span>A</span><h2>Anamnesa</h2></div><button className="secondary" onClick={() => copy(anamnesis.map(([label,key]) => `${label}\n${val(patient,key)}`).join('\n\n'))}>Salin bagian</button></div>
-        {anamnesis.slice(0, 6).map(([label,key]) => <Field key={key} label={label} value={val(patient,key)} onCopy={copy}/>)}
-        <Field label="Status Sosial" value={val(patient,'Status Sosial')} onCopy={copy}/>
-        <div className="assessment-choice"><span>Status ekonomi</span><div>{['Cukup','Sedang','Tinggi'].map(x => <label key={x}><input type="radio" checked={val(patient,'Status Ekonomi').toLowerCase() === x.toLowerCase()} readOnly/> {x}</label>)}</div></div>
-        <Field label="Status Kejiwaan dan Kebiasaan" value={val(patient,'Status Kejiwaan dan Kebiasaan')} onCopy={copy}/>
+        {anamnesis.map(([label,key]) => <Field key={key} label={label} value={val(patient,key)} onCopy={copy}/>)}
       </section>
-      <section className="assessment-section"><div className="assessment-section-head"><div><span>B</span><h2>Pemeriksaan Umum</h2></div><button className="secondary" onClick={() => copy(['Kesadaran','Keadaan Umum','Tekanan Darah','Nadi','Suhu','Pernapasan','Status Gizi','Nyeri (VAS)'].map(k => `${k}: ${val(patient,k)}`).concat(examRows.map(r => `${r.part}: ${r.description}`)).join('\n'))}>Salin bagian</button></div>
-        <div className="vitals-grid">{[['Kesadaran','Kesadaran'],['Keadaan Umum','Keadaan Umum'],['Tekanan Darah','Tekanan Darah'],['Nadi','Nadi'],['Suhu','Suhu'],['Pernapasan','Pernapasan'],['Status Gizi','Status Gizi'],['Nyeri (VAS)','Nyeri (VAS)']].map(([label,key]) => <Field key={key} label={label} value={val(patient,key)} onCopy={copy} compact/> )}</div>
-        <div className="physical-table"><div className="physical-head"><span>Pemeriksaan Fisik</span><span>Normal</span><span>Deskripsi</span></div>{examRows.map(row => <div className="physical-row" key={row.part}><span>{row.part}</span><span><input aria-label={`${row.part} normal`} type="checkbox" checked={row.normal} readOnly/></span><div>{row.description}<button aria-label={`Salin ${row.part}`} onClick={() => copy(row.description)}><CopyIcon/></button></div></div>)}</div>
+      <section className="assessment-section"><div className="assessment-section-head"><div><span>B</span><h2>Pemeriksaan Umum</h2></div><button className="secondary" onClick={() => copy(['Kesadaran','Tekanan Darah','Nadi','Suhu','Pernapasan','Status Gizi','Nyeri (VAS)'].map(k => `${k}: ${noUnit(val(patient,k))}`).concat(abnormalFindings ? [`Pemeriksaan Fisik: ${abnormalFindings}`] : []).join('\n'))}>Salin bagian</button></div>
+        <div className="vitals-grid">{[['Kesadaran','Kesadaran'],['Tekanan Darah','Tekanan Darah'],['Nadi','Nadi'],['Suhu','Suhu'],['Pernapasan','Pernapasan'],['Status Gizi','Status Gizi'],['Nyeri (VAS)','Nyeri (VAS)']].map(([label,key]) => <Field key={key} label={label} value={key === 'Kesadaran' || key === 'Status Gizi' || key === 'Nyeri (VAS)' ? val(patient,key) : noUnit(val(patient,key))} onCopy={copy} compact/> )}</div>
+        <Field label="Pemeriksaan Fisik" value={abnormalFindings} onCopy={copy}/>
       </section>
       <section className="assessment-section"><div className="assessment-section-head"><div><span>C</span><h2>Pemeriksaan Penunjang & Rencana</h2></div><button className="secondary" onClick={() => copy(clinical.map(k => `${k}\n${val(patient,k)}`).join('\n\n'))}>Salin bagian</button></div><div className="clinical-fields">{clinical.map(k => <Field key={k} label={k} value={val(patient,k)} onCopy={copy}/>)}</div></section>
     </>}
