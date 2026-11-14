@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './styles.css';
+import './refinements.css';
 
 export const metadata: Metadata = {
   title: '9909',
