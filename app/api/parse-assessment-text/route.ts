@@ -16,6 +16,8 @@ Balas hanya JSON valid berbentuk {"patients":[{...}]}. Setiap pasien wajib memil
 
 ATURAN EKSTRAKSI:
 - Satu objek untuk setiap pasien yang berbeda. Jika nama yang sama muncul berulang dengan informasi yang jelas merupakan duplikasi, gabungkan tanpa mengulang isi. Jangan gabungkan pasien berbeda.
+- RPD berarti Riwayat Penyakit Dahulu; isi field "Riwayat Penyakit Dahulu" dari bagian/label RPD.
+- Field "Riwayat Penyakit Sekarang" diambil dari isi setelah penanda "S/" (Subjective), sampai penanda bagian berikutnya seperti O/, A/, atau P/. Jika tidak ada S/, gunakan bagian yang secara eksplisit berlabel riwayat penyakit sekarang.
 - Isi hanya fakta yang ada di teks. Jangan menyimpulkan diagnosis, obat, dosis, alergi, hasil pemeriksaan, atau nilai tanda vital. Pertahankan istilah medis, angka, dosis, frekuensi, dan satuan.
 - Informasi pasien yang tidak ada atau tidak diketahui isi "-". Untuk "Pemeriksaan Fisik Abnormal", kosongkan menjadi string kosong bila tidak ada kelainan; masukkan hanya temuan yang abnormal, beserta bagian tubuhnya. Jangan tulis bagian normal.
 - "Status Gizi" selalu "Sedang".
