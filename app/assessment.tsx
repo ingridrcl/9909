@@ -20,6 +20,9 @@ export default function Assessment() {
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [inputMode, setInputMode] = useState<'excel' | 'text'>('excel');
+  const [sourceText, setSourceText] = useState('');
+  const [processingText, setProcessingText] = useState(false);
   const patient = patients[index];
 
   async function loadFile(file?: File) {
@@ -37,6 +40,19 @@ export default function Assessment() {
       setPatients(cleaned); setIndex(0); setFileName(file.name);
     } catch (e) { setError(e instanceof Error ? e.message : 'File Excel tidak dapat dibaca.'); }
   }
+  async function parseClinicalText() {
+    if (!sourceText.trim()) { setError('Tempel teks rekam medis terlebih dahulu.'); return; }
+    setError(''); setProcessingText(true);
+    try {
+      const response = await fetch('/api/parse-assessment-text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: sourceText }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Teks tidak dapat diproses.');
+      setPatients(data.patients); setIndex(0); setFileName(`Teks klinis · ${data.patients.length} pasien`);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Gagal memproses teks.'); }
+    finally { setProcessingText(false); }
+  }
   async function copy(text: string) {
     try { await navigator.clipboard.writeText(text); setNotice('Tersalin ke clipboard'); }
     catch { setNotice('Clipboard tidak tersedia di browser ini'); }
@@ -52,7 +68,8 @@ export default function Assessment() {
 
   return <div className="content assessment-content">
     <div className="page-heading"><div><div className="eyebrow"><span>03</span> TOOLKIT / KLINIS</div><h1>Assessment Awal<span className="heading-period">.</span></h1><p>Unggah Excel, lalu salin isian per bagian dan per pasien.</p></div><div className="heading-stamp assessment-stamp"><small>ASSESS<br/>DESK</small></div></div>
-    <label className="assessment-upload" htmlFor="assessment-file"><span className="upload-mark">↑</span><span><b>{fileName || 'Pilih file Excel pasien'}</b><small>Format .xlsx atau .xls · diproses di browser</small></span><span className="secondary upload-button">Pilih file</span><input id="assessment-file" type="file" accept=".xlsx,.xls" onChange={e => loadFile(e.target.files?.[0])}/></label>
+    <div className="assessment-input-tabs" role="tablist" aria-label="Sumber data assessment"><button type="button" role="tab" aria-selected={inputMode === 'excel'} className={inputMode === 'excel' ? 'selected' : ''} onClick={() => { setInputMode('excel'); setError(''); }}>Unggah Excel</button><button type="button" role="tab" aria-selected={inputMode === 'text'} className={inputMode === 'text' ? 'selected' : ''} onClick={() => { setInputMode('text'); setError(''); }}>Tempel teks klinis</button></div>
+    {inputMode === 'excel' ? <label className="assessment-upload" htmlFor="assessment-file"><span className="upload-mark">↑</span><span><b>{fileName || 'Pilih file Excel pasien'}</b><small>Format .xlsx atau .xls · dibaca di browser</small></span><span className="secondary upload-button">Pilih file</span><input id="assessment-file" type="file" accept=".xlsx,.xls" onChange={e => loadFile(e.target.files?.[0])}/></label> : <div className="assessment-text-entry"><label htmlFor="clinical-text">Tempel SOAP, catatan IGD, atau data rekam medis. Bisa berisi beberapa pasien.</label><textarea id="clinical-text" value={sourceText} onChange={e => setSourceText(e.target.value)} placeholder={'Contoh:\nNama: Ny. A\nS: Sesak napas sejak 2 hari...\nO: TD 120/80, nadi 90x/menit...\nA/: Pneumonia\nTerapi DPJP: ...\nPlanning: ...'} rows={8}/><div className="assessment-text-actions"><small>Teks dikirim ke API AI untuk dipetakan menjadi field assessment.</small><button type="button" className="primary" onClick={parseClinicalText} disabled={processingText || !sourceText.trim()}>{processingText ? <><span className="loader light small"/> Membaca teks…</> : <>Proses teks <span>↗</span></>}</button></div></div>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {!patient ? <div className="assessment-empty"><span>▤</span><h2>Belum ada data pasien</h2><p>Unggah workbook dengan satu baris judul kolom dan satu pasien pada setiap baris.</p></div> : <>
       <div className="patient-switcher"><button className="secondary" onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0}>← Sebelumnya</button><div className="patient-current"><small>PASIEN {index + 1} DARI {patients.length}</small><b>{displayName}</b></div><button className="secondary" onClick={() => setIndex(i => Math.min(patients.length - 1, i + 1))} disabled={index === patients.length - 1}>Berikutnya →</button></div>
